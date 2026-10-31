@@ -1,0 +1,8 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+if [ ! -x "$ROOT/.venv/bin/python" ]; then
+    printf '%s\n' '请先在 Termux 中执行 bash install.sh' >&2
+    exit 1
+fi
+exec "$ROOT/.venv/bin/python" "$ROOT/entrypoint.py" "$@"

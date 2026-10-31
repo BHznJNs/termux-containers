@@ -1,0 +1,8 @@
+services:
+  web:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    enabled: true
+    volumes:
+      - ./data/web:/usr/share/nginx/html
+    environment:
+      PORT: "8080"
