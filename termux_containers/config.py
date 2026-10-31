@@ -35,6 +35,7 @@ UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _ma
 class Volume:
     source: Path
     target: str
+    type: str
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ class Service:
     @property
     def fingerprint(self):
         value = {"environment": self.environment,
-                 "volumes": [(str(v.source), v.target) for v in self.volumes]}
+                 "volumes": [(str(v.source), v.target, v.type) for v in self.volumes]}
         return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
@@ -81,9 +82,22 @@ def check_directory(path):
             raise ConfigError(f"无法访问绑定路径: {path}")
         current = parent
     if not current.is_dir():
-        raise ConfigError(f"首版仅支持目录绑定，路径不是目录: {current}")
+        raise ConfigError(f"绑定路径应为目录，但实际不是目录: {current}")
     if not os.access(current, os.R_OK | os.W_OK | os.X_OK):
         raise ConfigError(f"绑定路径不可读写或不可遍历: {current}")
+
+
+def check_volume(volume):
+    if volume.type == "directory":
+        check_directory(volume.source)
+        return
+    path = volume.source
+    if not path.exists():
+        raise ConfigError(f"文件挂载源不存在或符号链接失效，请先创建文件: {path}")
+    if not path.is_file():
+        raise ConfigError(f"绑定路径应为普通文件，但实际不是普通文件: {path}")
+    if not os.access(path, os.R_OK | os.W_OK) or not os.access(path.parent, os.X_OK):
+        raise ConfigError(f"绑定文件不可读写或父目录不可遍历: {path}")
 
 
 def load_config(path):
@@ -133,14 +147,28 @@ def load_config(path):
             ports[number] = name
         volumes_raw = raw.get("volumes", [])
         if not isinstance(volumes_raw, list):
-            raise ConfigError(f"{name}.volumes 必须为字符串数组")
+            raise ConfigError(f"{name}.volumes 必须为挂载数组（字符串或对象）")
         volumes = []
         targets = []
         for item in volumes_raw:
-            item = _text(item, f"{name}.volumes")
-            if item.count(':') != 1:
-                raise ConfigError(f"{name}: 绑定格式必须为 宿主目录:/容器目录: {item!r}")
-            source, target = item.split(':')
+            volume_type = None
+            if isinstance(item, str):
+                item = _text(item, f"{name}.volumes")
+                if item.count(':') != 1:
+                    raise ConfigError(f"{name}: 绑定格式必须为 宿主路径:/容器路径: {item!r}")
+                source, target = item.split(':')
+            elif isinstance(item, dict):
+                if set(item) != {"type", "source", "target"}:
+                    raise ConfigError(f"{name}: 挂载对象必须且只能包含 type、source、target")
+                volume_type = item["type"]
+                if volume_type not in ("file", "directory"):
+                    raise ConfigError(f"{name}: 挂载 type 必须为 file 或 directory")
+                source = _text(item["source"], f"{name}.volumes.source")
+                target = _text(item["target"], f"{name}.volumes.target")
+            else:
+                raise ConfigError(f"{name}: 挂载必须为字符串或对象")
+            if ':' in source or ':' in target:
+                raise ConfigError(f"{name}: 挂载路径不能包含冒号: {item!r}")
             if not source or not target.startswith('/') or '..' in PurePosixPath(target).parts:
                 raise ConfigError(f"{name}: 无效绑定: {item!r}")
             target_path = PurePosixPath(target)
@@ -150,8 +178,13 @@ def load_config(path):
             source_path = Path(source).expanduser()
             if not source_path.is_absolute():
                 source_path = path.parent / source_path
-            check_directory(source_path)
+            if volume_type is None:
+                volume_type = "file" if source_path.is_file() else "directory"
+            volume = Volume(source_path, str(target_path), volume_type)
+            check_volume(volume)
             source_path = source_path.resolve()
-            volumes.append(Volume(source_path, str(target_path)))
+            if ':' in str(source_path):
+                raise ConfigError(f"{name}: 解析后的宿主路径不能包含冒号: {source_path}")
+            volumes.append(Volume(source_path, str(target_path), volume_type))
         services[name] = Service(name, image, enabled, tuple(volumes), environment)
     return Config(path, services)

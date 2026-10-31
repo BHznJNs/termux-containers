@@ -1,6 +1,6 @@
 import sys
 
-from .config import ConfigError, check_directory
+from .config import ConfigError, check_volume
 from .runtime import RuntimeError_
 from .state import Metadata, StateError, project_lock
 
@@ -52,9 +52,10 @@ def _service(config, runtime, metadata, command, service):
     if command == "start" and record["image"] != service.image:
         raise ConfigError("镜像声明已变化，请运行 apply 重新部署")
     for volume in service.volumes:
-        check_directory(volume.source)
-        volume.source.mkdir(parents=True, exist_ok=True)
-        check_directory(volume.source)
+        check_volume(volume)
+        if volume.type == "directory":
+            volume.source.mkdir(parents=True, exist_ok=True)
+        check_volume(volume)
     if command == "apply" and installed and record["image"] != service.image:
         print(f"{service.name}: 镜像变更，重部署（仅保留宿主机绑定数据）", flush=True)
         runtime.stop(name)

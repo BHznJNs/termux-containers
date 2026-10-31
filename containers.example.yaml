@@ -3,6 +3,14 @@ services:
     image: nginxinc/nginx-unprivileged:stable-alpine
     enabled: true
     volumes:
-      - ./data/web:/usr/share/nginx/html
+      - type: directory
+        source: ./data/web
+        target: /usr/share/nginx/html
+      # 单文件挂载：先创建有效的 nginx 配置，再取消以下注释。
+      # - type: file
+      #   source: ./config/default.conf
+      #   target: /etc/nginx/conf.d/default.conf
+      # 已存在的文件也可用简写：
+      # - ./config/default.conf:/etc/nginx/conf.d/default.conf
     environment:
       PORT: "8080"
