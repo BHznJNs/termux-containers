@@ -149,7 +149,7 @@ services:
 | `enabled`     | Boolean  | 是否启用服务，默认 `true` | 必须   |
 | `volumes`     | String[] | 宿主机与容器目录绑定       | 必须支持 |
 | `environment` | Object   | 启动时注入环境变量        | 首版   |
-| `command`     | String[] | 可选启动命令覆盖         | 后续   |
+| `command`     | String / String[] | 可选启动命令或参数，字符串按 POSIX 规则拆分，不隐式执行 Shell | 已支持 |
 | `working_dir` | String   | 可选工作目录覆盖         | 后续   |
 | `depends_on`  | String[] | 服务启动顺序依赖         | 后续   |
 | `healthcheck` | Object   | 服务健康检查规则         | 后续   |

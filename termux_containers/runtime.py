@@ -88,6 +88,8 @@ class ProotDistro:
         for key, value in sorted(service.environment.items()):
             args.extend(["--env", f"{key}={value}"])
         args.append(name)
+        if service.command is not None:
+            args.extend(["--", *service.command])
         self.call(*args)
         for _ in range(10):
             if name in self.running():

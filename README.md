@@ -38,6 +38,29 @@ services:
 
 相对挂载路径以 YAML 所在目录为基准。缺失目录自动创建，文件必须事先存在；示例页面需自行放入 `data/web`。`PORT` 是应用环境变量，不是端口映射。
 
+通过 `command` 传入容器启动命令或参数，推荐使用数组：
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - YOUR_TUNNEL_TOKEN
+```
+
+也支持等价的字符串写法：
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token YOUR_TUNNEL_TOKEN
+```
+
 ## 命令列表
 
 | 命令 | 作用 |

@@ -14,3 +14,15 @@ services:
       # - ./config/default.conf:/etc/nginx/conf.d/default.conf
     environment:
       PORT: "8080"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    enabled: false # 填写有效 token 后启用
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - YOUR_TUNNEL_TOKEN
+    # 等价字符串写法（替换上面的 command，不要重复声明）：
+    # command: tunnel --no-autoupdate run --token YOUR_TUNNEL_TOKEN

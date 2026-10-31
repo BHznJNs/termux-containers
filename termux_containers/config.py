@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 
 import yaml
 
@@ -45,11 +46,14 @@ class Service:
     enabled: bool
     volumes: tuple[Volume, ...]
     environment: dict[str, str]
+    command: tuple[str, ...] | None = None
 
     @property
     def fingerprint(self):
         value = {"environment": self.environment,
                  "volumes": [(str(v.source), v.target, v.type) for v in self.volumes]}
+        if self.command is not None:
+            value["command"] = self.command
         return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
@@ -115,7 +119,7 @@ def load_config(path):
             raise ConfigError(f"无效服务名称: {name!r}")
         if not isinstance(raw, dict):
             raise ConfigError(f"{name}: 服务必须为对象")
-        unknown = set(raw) - {"image", "enabled", "volumes", "environment"}
+        unknown = set(raw) - {"image", "enabled", "volumes", "environment", "command"}
         if unknown:
             raise ConfigError(f"{name}: 不支持的字段: {', '.join(sorted(unknown))}")
         image = _text(raw.get("image"), f"{name}.image")
@@ -129,6 +133,18 @@ def load_config(path):
         enabled = raw.get("enabled", True)
         if type(enabled) is not bool:
             raise ConfigError(f"{name}.enabled 必须为布尔值")
+        command = raw.get("command")
+        if command is not None:
+            if isinstance(command, str):
+                try:
+                    command = shlex.split(command, posix=True)
+                except ValueError as exc:
+                    raise ConfigError(f"{name}.command 字符串引号或转义无效") from exc
+            if (not isinstance(command, list) or not command
+                    or any(not isinstance(arg, str) or '\x00' in arg for arg in command)
+                    or not command[0]):
+                raise ConfigError(f"{name}.command 必须为非空命令字符串或字符串数组，首项不能为空且参数不能包含 NUL")
+            command = tuple(command)
         environment = raw.get("environment", {})
         if not isinstance(environment, dict):
             raise ConfigError(f"{name}.environment 必须为对象")
@@ -186,5 +202,5 @@ def load_config(path):
             if ':' in str(source_path):
                 raise ConfigError(f"{name}: 解析后的宿主路径不能包含冒号: {source_path}")
             volumes.append(Volume(source_path, str(target_path), volume_type))
-        services[name] = Service(name, image, enabled, tuple(volumes), environment)
+        services[name] = Service(name, image, enabled, tuple(volumes), environment, command)
     return Config(path, services)

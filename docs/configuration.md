@@ -24,8 +24,41 @@ termux-containers init -f ~/services/containers.yaml
 | `enabled` | 布尔值，默认 `true` |
 | `volumes` | 文件或目录挂载数组，支持 `宿主路径:/容器绝对路径` 字符串及显式类型对象，默认空 |
 | `environment` | 环境变量对象，值必须为字符串（数字、布尔值需加引号），默认空 |
+| `command` | 可选命令字符串或非空字符串数组（推荐）；省略或 `null` 使用镜像默认命令 |
 
-未知字段、重复 YAML 键及重复/嵌套容器绑定目标会被拒绝。`command`、`working_dir`、`depends_on`、`healthcheck` 留待后续版本，不会静默忽略。
+未知字段、重复 YAML 键及重复/嵌套容器绑定目标会被拒绝。`working_dir`、`depends_on`、`healthcheck` 留待后续版本，不会静默忽略。
+
+## 启动命令与参数
+
+数组写法直接保留每个参数的边界：
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - YOUR_TUNNEL_TOKEN
+```
+
+字符串写法与上面等价：
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token YOUR_TUNNEL_TOKEN
+```
+
+- 字符串使用 POSIX `shlex.split` 拆分，含空格的参数需加引号，例如 `command: 'echo "hello world"'`；数组无需额外的 Shell 引号。
+- 两种写法均不经过 Shell，不展开 `$VAR`、不执行管道、重定向或命令替换；需要 Shell 时显式配置，例如 `command: ["/bin/sh", "-c", "echo hello && exec sleep 3600"]`，且镜像需包含该 Shell。
+- 空字符串、纯空白字符串、空数组、首个参数为空、非字符串参数、NUL 及不匹配的引号会被拒绝。首项之后允许空字符串参数；数字和布尔值参数需加引号。
+- 实际追加到 `proot-distro run [运行选项] <容器名> -- <参数...>`，沿用 PRoot-Distro 对镜像入口及默认命令的处理，不额外拼接可执行文件名。
+- 命令参数变化后执行 `apply` 会重启对应服务，不重建容器；等价的字符串和数组写法不会触发重启。`start` 不重启已经运行的服务。
+- `command` 可能包含 token 等敏感信息；不要提交真实凭据或公开命令记录。元数据仅保存配置指纹，不保存命令明文。
 
 ## 文件与目录挂载
 
