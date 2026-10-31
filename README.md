@@ -8,12 +8,12 @@
 
 ```sh
 pkg install git
-git clone <本仓库地址> ~/termux-containers
+git clone https://github.com/BHznJNs/termux-containers ~/termux-containers
 cd ~/termux-containers
 bash install.sh
 ```
 
-请将 `<本仓库地址>` 替换为实际地址，仓库应放在 Termux 私有目录，不要放在 `/sdcard`。脚本会安装依赖、创建命令入口和默认空配置，并配置 Bash/Zsh Session 自启动。
+脚本会安装依赖、创建命令入口和默认空配置，并配置 Bash Session 自启动。
 
 ## 配置示例
 
