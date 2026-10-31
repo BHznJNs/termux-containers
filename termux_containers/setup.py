@@ -4,6 +4,7 @@ import shlex
 import shutil
 import subprocess
 
+from .installation import record_shell
 from .runtime import ProotDistro, RuntimeError_
 from .state import state_root
 
@@ -57,11 +58,19 @@ def initialize(config_path, launcher):
     end = f"# <<< termux-containers {marker} <<<"
     block = f"{start}\ncase $- in\n  *i*) ( {command} ) & ;;\nesac\n{end}\n"
     rc = home / ".bashrc" if shell == "bash" else Path(os.environ.get("ZDOTDIR", str(home))) / ".zshrc"
+    try:
+        record_shell(rc, marker)
+    except ValueError as exc:
+        raise RuntimeError_(f"无法记录安装信息: {exc}") from exc
     _update_block(rc, start, end, block)
     if shell == "bash":
         profile = next((home / name for name in (".bash_profile", ".bash_login", ".profile")
                         if (home / name).exists()), home / ".bash_profile")
         # Login shells do not necessarily source .bashrc. Trigger the same idempotent command.
+        try:
+            record_shell(profile, marker)
+        except ValueError as exc:
+            raise RuntimeError_(f"无法记录安装信息: {exc}") from exc
         _update_block(profile, start, end, block)
     print(f"初始化完成，配置: {config_path}")
     print(f"Session 自启动已写入 {rc}；日志: {log}")

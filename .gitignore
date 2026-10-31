@@ -1,4 +1,6 @@
 .venv/
+.installation.json
+.installation-*.tmp
 __pycache__/
 *.py[cod]
 containers.yaml

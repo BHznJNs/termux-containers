@@ -48,8 +48,9 @@ services:
 | `termux-containers stop [服务名 ...]` | 停止服务，保留容器文件系统和宿主挂载数据 |
 | `termux-containers status [服务名 ...]` | 查看配置中服务的实际安装和运行状态 |
 | `termux-containers --help` | 查看帮助；子命令也支持 `--help` |
+| `bash uninstall.sh [--yes]` | 在仓库目录卸载工具和自启动入口，保留容器与数据；`--yes` 跳过确认 |
 
-省略服务名表示处理全部配置服务。默认读取仓库根目录的 `containers.yaml`；所有命令支持用 `-f` 指定配置，例如 `termux-containers -f ~/services/containers.yaml apply`。
+生命周期命令省略服务名表示处理全部配置服务。CLI 默认读取仓库根目录的 `containers.yaml`，支持用 `-f` 指定配置，例如 `termux-containers -f ~/services/containers.yaml apply`。
 
 **注意：修改镜像引用后执行 `apply` 会重建对应容器，丢失容器内未挂载的数据。**
 
